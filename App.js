@@ -1,52 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import TaskList from './TaskList';
 import ProgressBar from './ProgressBar';
-import styled, { ThemeProvider } from 'styled-components';
-
-const lightTheme = {
-  background: '#fff',
-  color: '#000',
-};
-
-const darkTheme = {
-  background: '#333',
-  color: '#fff',
-};
+import './App.css';
 
 const App = () => {
   const [userName, setUserName] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const [filter, setFilter] = useState('pending'); // Can be 'pending' or 'completed'
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Load tasks and username from localStorage on initial render
+  useEffect(() => {
+    const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    const savedName = localStorage.getItem('userName') || '';
+    const savedDarkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
+    setTasks(savedTasks);
+    setUserName(savedName);
+    setDarkMode(savedDarkMode);
+  }, []);
+
+  // Save tasks and dark mode to localStorage on changes
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [tasks, darkMode]);
 
   const handleAddTask = (task) => {
-    setTasks([...tasks, { ...task, id: Date.now(), completed: false }]);
+    setTasks([...tasks, task]);
   };
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
+  const handleUpdateTask = (updatedTask) => {
+    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+  };
 
-  const filteredTasks = tasks.filter(task => 
-    filter === 'pending' ? !task.completed : task.completed
-  );
+  const handleDeleteTask = (taskId) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+  };
+
+  const handleToggleComplete = (taskId) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const handleNameChange = (e) => {
+    const name = e.target.value;
+    setUserName(name);
+    localStorage.setItem('userName', name);
+  };
 
   return (
-    <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-      <div style={{ backgroundColor: darkMode ? '#333' : '#fff', color: darkMode ? '#fff' : '#000' }}>
-        <h1>Task Manager</h1>
-        <input
-          type="text"
-          placeholder="Enter your name"
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-        />
-        <h2>Welcome, {userName || 'User'}!</h2>
-        <button onClick={toggleDarkMode}>
+    <div className={`app ${darkMode ? 'dark' : 'light'}`}>
+      <div className="header">
+        <h1>{userName ? `Hello, ${userName}!` : 'Enter your name:'}</h1>
+        {!userName && <input type="text" onChange={handleNameChange} placeholder="Your name" />}
+        <button onClick={() => setDarkMode(!darkMode)}>
           Toggle {darkMode ? 'Light' : 'Dark'} Mode
         </button>
-        <TaskList tasks={filteredTasks} addTask={handleAddTask} setTasks={setTasks} />
-        <ProgressBar tasks={tasks} />
       </div>
-    </ThemeProvider>
+
+      <ProgressBar tasks={tasks} />
+
+      <div className="task-section">
+        <button onClick={() => setShowCompleted(!showCompleted)}>
+          {showCompleted ? 'Show Pending Tasks' : 'Show Completed Tasks'}
+        </button>
+
+        <TaskList
+          tasks={tasks}
+          showCompleted={showCompleted}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
+          onToggleComplete={handleToggleComplete}
+          onAddTask={handleAddTask}
+        />
+      </div>
+    </div>
   );
 };
 
